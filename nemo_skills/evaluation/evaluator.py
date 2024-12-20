@@ -79,6 +79,46 @@ def eval_mmlu(cfg):
                 sample['predicted_answer'] = parse_result
                 fout.write(json.dumps(sample) + "\n")
                         
+@nested_dataclass(kw_only=True)
+class RulerEvaluatorConfig:
+    parse_func: str = "default"
+
+
+def eval_ruler(cfg):
+
+    def default_parse(prediction):
+        prediction = prediction.strip()
+         # Remove all non-printable characters
+        np_pattern = re.compile(r'[\x00-\x1f]')
+        pp_predict = np_pattern.sub('\n', prediction).strip()
+        return pp_predict
+
+    def string_match_all_single(preds, refs):
+        # """the metric function with input (predictions: [str], references: [[str]]) to compute score."""
+        preds = [preds]
+        refs = [refs]
+        score = [sum([1.0 if r.lower() in pred.lower() else 0.0 for r in ref]) / len(ref) for pred, ref in zip(preds, refs)][0]
+        print(score)
+        return score
+    
+    eval_config = RulerEvaluatorConfig(**cfg.eval_config)
+    assert eval_config.parse_func in ['default',], f"Unsupported eval type: {eval_config.parse_func}"
+
+    parse_funcs = {
+        'default': default_parse,
+    }
+
+    for file in unroll_files(cfg.input_files):
+        with open(file, 'rt', encoding='utf-8') as fin:
+            data = [json.loads(line) for line in fin]
+        with open(file, 'wt', encoding='utf-8') as fout:
+            for sample in tqdm(data):
+                parse_result = parse_funcs[eval_config.parse_func](sample['generation'])
+                sample['is_correct'] = string_match_all_single(sample['generation'], sample['expected_answer'])
+                print(sample['is_correct'] )
+                sample['predicted_answer'] = parse_result
+                fout.write(json.dumps(sample) + "\n")
+
 
 @nested_dataclass(kw_only=True)
 class MathEvaluatorConfig:
@@ -453,6 +493,7 @@ EVALUATOR_MAP = {
     'answer_judgement': dummy_eval,
     'lean4': eval_lean4,
     'mmlu': eval_mmlu,
+    'ruler': eval_ruler,
 }
 
 

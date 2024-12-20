@@ -15,6 +15,6 @@
 # settings that define how evaluation should be done by default (all can be changed from cmdline)
 PROMPT_CONFIG = 'generic/default'
 DATASET_GROUP = 'chat'
-METRICS_TYPE = "math"
-DEFAULT_EVAL_ARGS = ""
+METRICS_TYPE = "ruler"
+DEFAULT_EVAL_ARGS = "++eval_type=ruler"
 DEFAULT_GENERATION_ARGS = ""
