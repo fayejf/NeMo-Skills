@@ -98,7 +98,6 @@ def eval_ruler(cfg):
         preds = [preds]
         refs = [refs]
         score = [sum([1.0 if r.lower() in pred.lower() else 0.0 for r in ref]) / len(ref) for pred, ref in zip(preds, refs)][0]
-        print(score)
         return score
     
     eval_config = RulerEvaluatorConfig(**cfg.eval_config)
@@ -115,7 +114,6 @@ def eval_ruler(cfg):
             for sample in tqdm(data):
                 parse_result = parse_funcs[eval_config.parse_func](sample['generation'])
                 sample['is_correct'] = string_match_all_single(sample['generation'], sample['expected_answer'])
-                print(sample['is_correct'] )
                 sample['predicted_answer'] = parse_result
                 fout.write(json.dumps(sample) + "\n")
 

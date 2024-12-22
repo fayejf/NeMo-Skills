@@ -107,6 +107,7 @@ class PromptConfig:
     system: str = ""
     template: PromptTemplate = None
     few_shot_examples: FewShotExamplesConfig = field(default_factory=FewShotExamplesConfig)
+    assistant_prefix: str = ""
 
 
 class Prompt:
@@ -236,16 +237,18 @@ class Prompt:
             generation = input_dict.get("generation", "")
         else:
             generation = ""
-
+        
         if self.config.template:
             if multi_turn_key is None:
                 # TODO ruler only consider single turn now so add in this case only for now.
                 prompt_string = self.SYSTEM_FORMAT.format(
                     system=self.config.system.format(**input_dict), **asdict(self.config.template)
                 )
+
                 prompt_string += self.TURN_BEGIN_FORMAT.format(
-                    user=self.build_user_message(input_dict), **asdict(self.config.template)
+                    user=self.build_user_message(input_dict), assistant_prefix=input_dict['assistant_prefix'], **asdict(self.config.template)
                 )
+                print(prompt_string)
                 if generation:
                     # Generation can be part of the input in cases such as reward models
                     prompt_string += self.TURN_END_FORMAT.format(assistant=generation, **asdict(self.config.template))
@@ -287,6 +290,9 @@ class Prompt:
                 messages.append({"role": "user", "content": self.build_user_message(input_dict[multi_turn_key][-1])})
                 if include_generation:  # optionally adding generation as the last assistant reply
                     messages.append({"role": "assistant", "content": turn["assistant"]})
+
+            print("====", messages)
+            raise e
             return messages
 
     @property
