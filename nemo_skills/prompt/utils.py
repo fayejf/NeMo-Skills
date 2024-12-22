@@ -111,7 +111,7 @@ class PromptConfig:
 
 class Prompt:
     SYSTEM_FORMAT = "{text_begin}{system_begin}{system}{system_end}"
-    TURN_BEGIN_FORMAT = "{user_begin}{user}{user_end}{assistant_begin}"
+    TURN_BEGIN_FORMAT = "{user_begin}{user}{user_end}{assistant_begin}{assistant_prefix}"
     TURN_END_FORMAT = "{assistant}{assistant_end}"
 
     def __init__(self, config):
@@ -239,6 +239,7 @@ class Prompt:
 
         if self.config.template:
             if multi_turn_key is None:
+                # TODO ruler only consider single turn now so add in this case only for now.
                 prompt_string = self.SYSTEM_FORMAT.format(
                     system=self.config.system.format(**input_dict), **asdict(self.config.template)
                 )
