@@ -115,6 +115,11 @@ def eval_ruler(cfg):
                 parse_result = parse_funcs[eval_config.parse_func](sample['generation'])
                 sample['is_correct'] = string_match_all_single(sample['generation'], sample['expected_answer'])
                 sample['predicted_answer'] = parse_result
+
+                # delete the input data to preserve storage space
+                sample.pop('problem')
+                sample.pop('question')
+
                 fout.write(json.dumps(sample) + "\n")
 
 

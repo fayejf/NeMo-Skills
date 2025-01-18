@@ -14,7 +14,7 @@
 
 # settings that define how evaluation should be done by default (all can be changed from cmdline)
 # this will be copied to individual ruler subtasks. 
-PROMPT_CONFIG = 'generic/default'
+PROMPT_CONFIG = 'generic/default-problem'
 DATASET_GROUP = 'chat'
 METRICS_TYPE = "ruler"
 DEFAULT_EVAL_ARGS = "++eval_type=ruler"

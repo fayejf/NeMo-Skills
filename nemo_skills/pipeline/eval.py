@@ -226,7 +226,7 @@ def eval(
                 partition=partition,
                 time_min=time_min,
                 server_config=server_config,
-                with_sandbox=True,
+                with_sandbox=False,
                 run_after=run_after,
                 reuse_code_exp=reuse_code_exp,
                 extra_package_dirs=[extra_datasets] if extra_datasets else None,
