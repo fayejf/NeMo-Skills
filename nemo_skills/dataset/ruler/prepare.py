@@ -20,6 +20,70 @@ import glob
 from shutil import copyfile
 # prepare ruler jsons from steps: 
 
+# Define the configuration as a dictionary
+config = {
+    "PROMPT_CONFIG": "generic/default",
+    "DATASET_GROUP": "chat",
+    "METRICS_TYPE": "ruler",
+    "DEFAULT_EVAL_ARGS": {
+        "eval_type": "ruler",
+        "eval_config.match_type": "all"
+    },
+    "DEFAULT_GENERATION_ARGS": {
+        "inference.tokens_to_generate": 120
+    }
+}
+
+# Define the tokens_to_generate for each task from RULER/scripts/data/synthetic/constants.py
+tokens_to_generate ={
+    'niah': 128,
+    'vt': 30,
+    'cwe': 120,
+    'fwe': 50,
+    'qa': 32
+}
+
+def write_config_to_file(file_path, config):
+    """
+    Writes the configuration dictionary to a file in the desired format.
+    
+    Args:
+        file_path (str): Path to the file.
+        config (dict): Configuration dictionary to write.
+    """
+    def format_value(key, value):
+        """Format the value for the output."""
+        if isinstance(value, dict):
+            # Format nested dictionaries as key-value pairs with "++"
+            return " ".join(
+                f"++{sub_key}={sub_value}" for sub_key, sub_value in value.items()
+            )
+        elif isinstance(value, str):
+            return f'"{value}"'
+        else:
+            return value
+
+    with open(file_path, "a") as file:
+        for key, value in config.items():
+            if isinstance(value, dict):
+                # Special formatting for dictionary values like DEFAULT_EVAL_ARGS
+                formatted_value = format_value(key, value)
+                if key == "DEFAULT_EVAL_ARGS":
+                    file.write(f"{key} = (\n    \"{formatted_value} \"\n)\n")
+                else:
+                    file.write(f"{key} = \"{formatted_value}\"\n")
+            else:
+                # Write simple key-value pairs
+                formatted_value = format_value(key, value)
+                file.write(f"{key} = {formatted_value}\n")
+
+def update_config_for_task(config, task):
+    # update the config for the task
+    short_task_name = task.split('_')[0]
+    config['DEFAULT_GENERATION_ARGS']['inference.tokens_to_generate'] = tokens_to_generate[short_task_name]
+    if short_task_name == 'qa':
+        config['DEFAULT_EVAL_ARGS']['eval_config.match_type'] = 'part'
+    return config
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -37,7 +101,13 @@ if __name__ == "__main__":
         output_folder = Path(f"../{original_name}-{task}")
         output_folder.mkdir(exist_ok=True)
         output_file = os.path.join(output_folder, subset_file)
+        
+        config = update_config_for_task(config, task)
+        # copy the config file
         copyfile("./__init__.py", os.path.join(output_folder, "__init__.py"))
+        # write the config to the file
+        write_config_to_file(os.path.join(output_folder, "__init__.py"), config)
+
         with open(original_file, "r") as fin, open(output_file, "wt", encoding="utf-8") as fout:
             for line in fin:
                 original_entry = json.loads(line)
