@@ -18,10 +18,11 @@ import os
 from pathlib import Path
 import glob
 from shutil import copyfile
+from copy import deepcopy
 # prepare ruler jsons from steps: 
 
 # Define the configuration as a dictionary
-config = {
+default_config = {
     "PROMPT_CONFIG": "generic/default",
     "DATASET_GROUP": "chat",
     "METRICS_TYPE": "ruler",
@@ -80,10 +81,11 @@ def write_config_to_file(file_path, config):
 def update_config_for_task(config, task):
     # update the config for the task
     short_task_name = task.split('_')[0]
-    config['DEFAULT_GENERATION_ARGS']['inference.tokens_to_generate'] = tokens_to_generate[short_task_name]
+    updated_config = deepcopy(config)
+    updated_config['DEFAULT_GENERATION_ARGS']['inference.tokens_to_generate'] = tokens_to_generate[short_task_name]
     if short_task_name == 'qa':
-        config['DEFAULT_EVAL_ARGS']['eval_config.match_type'] = 'part'
-    return config
+        updated_config['DEFAULT_EVAL_ARGS']['eval_config.match_type'] = 'part'
+    return updated_config
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -101,12 +103,11 @@ if __name__ == "__main__":
         output_folder = Path(f"../{original_name}-{task}")
         output_folder.mkdir(exist_ok=True)
         output_file = os.path.join(output_folder, subset_file)
-        
-        config = update_config_for_task(config, task)
+        updated_config = update_config_for_task(default_config, task)
         # copy the config file
         copyfile("./__init__.py", os.path.join(output_folder, "__init__.py"))
         # write the config to the file
-        write_config_to_file(os.path.join(output_folder, "__init__.py"), config)
+        write_config_to_file(os.path.join(output_folder, "__init__.py"), updated_config)
 
         with open(original_file, "r") as fin, open(output_file, "wt", encoding="utf-8") as fout:
             for line in fin:
