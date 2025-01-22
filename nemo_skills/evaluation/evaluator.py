@@ -82,7 +82,7 @@ def eval_mmlu(cfg):
 @nested_dataclass(kw_only=True)
 class RulerEvaluatorConfig:
     parse_func: str = "default"
-
+    match_type: str
 
 def eval_ruler(cfg):
 
@@ -99,12 +99,23 @@ def eval_ruler(cfg):
         refs = [refs]
         score = [sum([1.0 if r.lower() in pred.lower() else 0.0 for r in ref]) / len(ref) for pred, ref in zip(preds, refs)][0]
         return score
+        
+    def string_match_part_single(preds, refs):
+        preds = [preds]
+        refs = [refs]
+        score = [sum([max([1.0 if r.lower() in pred.lower() else 0.0 for r in ref]) for pred, ref in zip(preds, refs)])][0]
+        return score    
     
     eval_config = RulerEvaluatorConfig(**cfg.eval_config)
     assert eval_config.parse_func in ['default',], f"Unsupported eval type: {eval_config.parse_func}"
+    assert eval_config.match_type in ['all', 'part'], f"Unsupported eval match type: {eval_config.match_type}"
 
     parse_funcs = {
         'default': default_parse,
+    }
+    match_type_funcs = {
+        'all': string_match_all_single,
+        'part': string_match_part_single,
     }
 
     for file in unroll_files(cfg.input_files):
@@ -113,7 +124,7 @@ def eval_ruler(cfg):
         with open(file, 'wt', encoding='utf-8') as fout:
             for sample in tqdm(data):
                 parse_result = parse_funcs[eval_config.parse_func](sample['generation'])
-                sample['is_correct'] = string_match_all_single(sample['generation'], sample['expected_answer'])
+                sample['is_correct'] = match_type_funcs[eval_config.match_type](sample['generation'], sample['expected_answer'])
                 sample['predicted_answer'] = parse_result
                 fout.write(json.dumps(sample) + "\n")
 
