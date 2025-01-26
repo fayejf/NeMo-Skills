@@ -120,7 +120,7 @@ if __name__ == "__main__":
         print(original_file)
         task, subset_file =  original_file.split("/")[-2], original_file.split("/")[-1]
         # create dataset in nemo-skills/dataset/
-        dataset_folder = Path(f"../{eval_suite}")
+        dataset_folder = Path(f"./{eval_suite}")
         dataset_folder.mkdir(parents=True, exist_ok=True)
         # create jsonl task folder in args.output_json_folder
         output_json_task_folder = Path(f"{output_json_suite_folder}/{task}")
