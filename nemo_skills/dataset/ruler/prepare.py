@@ -31,7 +31,10 @@ default_config = {
         "eval_config.match_type": "all"
     },
     "DEFAULT_GENERATION_ARGS": {
-        "inference.tokens_to_generate": 120
+        "inference.tokens_to_generate": 120,
+        "input_file": "/ruler/ruler_llama_4k/niah-single_1/test.jsonl", # example. will be overwritten
+        "dataset": None, # overwrite dataset and split to use input_file
+        "split": None
     }
 }
 
@@ -78,38 +81,65 @@ def write_config_to_file(file_path, config):
                 formatted_value = format_value(key, value)
                 file.write(f"{key} = {formatted_value}\n")
 
-def update_config_for_task(config, task):
+def update_config_for_task(config, eval_suite, task, subset_file):
     # update the config for the task
     short_task_name = task.split('_')[0]
     updated_config = deepcopy(config)
     updated_config['DEFAULT_GENERATION_ARGS']['inference.tokens_to_generate'] = tokens_to_generate[short_task_name]
+    updated_config['DEFAULT_GENERATION_ARGS']['input_file'] = f"/ruler/{eval_suite}/{task}/{subset_file}"
+
     if short_task_name == 'qa':
         updated_config['DEFAULT_EVAL_ARGS']['eval_config.match_type'] = 'part'
+   
     return updated_config
 
+
 if __name__ == "__main__":
+    """
+    python prepare.py \
+    --input_json_folder=/data2/long_context_eval/ruler/original/ruler_llama_4k_original/ \
+    --output_json_folder=/data2/long_context_eval/ruler/ns/
+    """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json_folder_path", type=str, default="ruler")
+    parser.add_argument("--input_json_folder", type=str, required=True, help="ruler")
+    parser.add_argument("--output_json_folder", type=str, required=True, help="where to save the output ns style jsonl files")
     args = parser.parse_args()
 
-    data_dir = Path(__file__).absolute().parent
-    data_dir.mkdir(exist_ok=True)
+    # data_dir = Path(__file__).absolute().parent
+    # data_dir.mkdir(exist_ok=True)
     
-    original_files = [f for f in glob.glob(f"{args.json_folder_path}/**", recursive=True) if os.path.isfile(f)]
+    original_files = [f for f in glob.glob(f"{args.input_json_folder}/**", recursive=True) if os.path.isfile(f)]
+
+    if len(original_files) > 0:
+        # extract the eval_suite name from the input_json_folder
+        eval_suite = original_files[0].split("/")[-3].split("_original")[0]
+        output_json_suite_folder = Path(f"{args.output_json_folder}/{eval_suite}")
+        output_json_suite_folder.mkdir(parents=True, exist_ok=True)
+    else:
+        raise ValueError("No original files found. please check the --input_json_folder")
+
 
     for original_file in original_files:
         print(original_file)
-        original_name, task, subset_file = original_file.split("/")[-3].split("_original")[0], original_file.split("/")[-2], original_file.split("/")[-1]
-        output_folder = Path(f"../{original_name}-{task}")
-        output_folder.mkdir(exist_ok=True)
-        output_file = os.path.join(output_folder, subset_file)
-        updated_config = update_config_for_task(default_config, task)
-        # copy the config file
-        copyfile("./__init__.py", os.path.join(output_folder, "__init__.py"))
-        # write the config to the file
-        write_config_to_file(os.path.join(output_folder, "__init__.py"), updated_config)
+        task, subset_file =  original_file.split("/")[-2], original_file.split("/")[-1]
+        # create dataset in nemo-skills/dataset/
+        dataset_folder = Path(f"../{eval_suite}")
+        dataset_folder.mkdir(parents=True, exist_ok=True)
+        # create jsonl task folder in args.output_json_folder
+        output_json_task_folder = Path(f"{output_json_suite_folder}/{task}")
+        output_json_task_folder.mkdir(exist_ok=True)
+        # create jsonl file in output_json_task_folder
+        output_json_file = os.path.join(output_json_task_folder, subset_file)
+        task_folder = Path(f"{dataset_folder}/{task}")  
+        task_folder.mkdir(exist_ok=True)
 
-        with open(original_file, "r") as fin, open(output_file, "wt", encoding="utf-8") as fout:
+        updated_config = update_config_for_task(default_config, eval_suite, task, subset_file)
+        # copy the config file
+        copyfile("./__init__.py", os.path.join(task_folder, "__init__.py"))
+        # write the config to the file
+        write_config_to_file(os.path.join(task_folder, "__init__.py"), updated_config)
+
+        with open(original_file, "r") as fin, open(output_json_file, "wt", encoding="utf-8") as fout:
             for line in fin:
                 original_entry = json.loads(line)
                 new_entry = dict(
@@ -121,4 +151,13 @@ if __name__ == "__main__":
                 )
                 
                 fout.write(json.dumps(new_entry) + "\n")
+
+    print(f"Done. Saved eval sutie {eval_suite} jsonl files to {args.output_json_folder}")
+    print(f"""     ==================================\n \
+    You can upload the jsonl files to cluster and skip uploading the dataset folder \n \
+    Or we have pre-generated jsonl files on most cluster. \n\n \
+    Make sure to mount the jsonl folder to /ruler/ in cluster config yaml files!\n \
+    i.e. /lustre/fsw/portfolios/llmservice/projects/llmservice_nemo_long-context/eval/ruler_ns/:/ruler/\n \
+    ==================================
+    """)
 

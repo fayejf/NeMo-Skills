@@ -21,4 +21,6 @@
 #     "++eval_type=ruler "
 #     "++eval_config.match_type=all "
 # )       
-# DEFAULT_GENERATION_ARGS = ""
+# DEFAULT_GENERATION_ARGS = (
+#     "++inference.tokens_to_generate=120 ++input_file=/ruler/ruler_llama_4k/niah-single_1/test.jsonl ~dataset ~split "
+# )
