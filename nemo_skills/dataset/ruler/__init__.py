@@ -15,12 +15,7 @@
 # settings that define how evaluation should be done by default (all can be changed from cmdline)
 # this will be copied and updated for each ruler subtask. 
 # PROMPT_CONFIG = 'generic/default'
-# DATASET_GROUP = 'chat'
+# DATASET_GROUP = "chat"
 # METRICS_TYPE = "ruler"
-# DEFAULT_EVAL_ARGS = (
-#     "++eval_type=ruler "
-#     "++eval_config.match_type=all "
-# )       
-# DEFAULT_GENERATION_ARGS = (
-#     "++inference.tokens_to_generate=120 ++input_file=/ruler/ruler_llama_4k/niah-single_1/test.jsonl ~dataset ~split "
-# )
+# DEFAULT_EVAL_ARGS = "++eval_type=ruler ++eval_config.match_type=all"
+# DEFAULT_GENERATION_ARGS = "++inference.tokens_to_generate=50 ++input_file=/ruler/ruler_llama_4k/fwe/test.jsonl ++dataset=null ++split=null"

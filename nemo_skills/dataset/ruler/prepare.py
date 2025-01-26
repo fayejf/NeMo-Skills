@@ -33,8 +33,8 @@ default_config = {
     "DEFAULT_GENERATION_ARGS": {
         "inference.tokens_to_generate": 120,
         "input_file": "/ruler/ruler_llama_4k/niah-single_1/test.jsonl", # example. will be overwritten
-        "dataset": None, # overwrite dataset and split to use input_file
-        "split": None
+        "dataset": 'null', # overwrite dataset and split to use input_file
+        "split": 'null'
     }
 }
 
@@ -72,10 +72,7 @@ def write_config_to_file(file_path, config):
             if isinstance(value, dict):
                 # Special formatting for dictionary values like DEFAULT_EVAL_ARGS
                 formatted_value = format_value(key, value)
-                if key == "DEFAULT_EVAL_ARGS":
-                    file.write(f"{key} = (\n    \"{formatted_value} \"\n)\n")
-                else:
-                    file.write(f"{key} = \"{formatted_value}\"\n")
+                file.write(f"{key} = \"{formatted_value}\"\n")
             else:
                 # Write simple key-value pairs
                 formatted_value = format_value(key, value)
