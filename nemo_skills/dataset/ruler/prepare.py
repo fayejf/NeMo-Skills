@@ -91,70 +91,83 @@ def update_config_for_task(config, eval_suite, task, subset_file):
     return updated_config
 
 
+def process_one_file(original_file, output_json_suite_folder, dataset_folder, eval_suite):
+    task, subset_file =  original_file.split("/")[-2], original_file.split("/")[-1]
+   
+    # create jsonl task folder in args.output_json_folder
+    output_json_task_folder = Path(f"{output_json_suite_folder}/{task}")
+    output_json_task_folder.mkdir(exist_ok=True)
+    # create jsonl file in output_json_task_folder
+    output_json_file = os.path.join(output_json_task_folder, subset_file)
+    task_folder = Path(f"{dataset_folder}/{task}")  
+    task_folder.mkdir(exist_ok=True)
+
+    updated_config = update_config_for_task(default_config, eval_suite, task, subset_file)
+    # copy the config file #TODO: can we remove the license title if not published?
+    copyfile("./__init__.py", os.path.join(task_folder, "__init__.py"))
+    # write the config to the file
+    write_config_to_file(os.path.join(task_folder, "__init__.py"), updated_config)
+
+    with open(original_file, "r") as fin, open(output_json_file, "wt", encoding="utf-8") as fout:
+        for line in fin:
+            original_entry = json.loads(line)
+            new_entry = dict(
+                index=original_entry["index"],
+                problem=original_entry["input"],
+                expected_answer=original_entry["outputs"],
+                length=original_entry["length"],
+                assistant_prefix=original_entry['answer_prefix']
+            )
+            
+            fout.write(json.dumps(new_entry) + "\n")
+
 if __name__ == "__main__":
     """
     python prepare.py \
-    --input_json_folder=/data2/long_context_eval/ruler/original/ruler_llama_4k_original/ \
-    --output_json_folder=/data2/long_context_eval/ruler/ns/
+    --input_json_folders /data2/long_context_eval/ruler/original/base_*/ /data2/long_context_eval/ruler/original/llama_*/ \
+    --output_json_folder /data2/long_context_eval/ruler/ns/
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_json_folder", type=str, required=True, help="ruler")
+    parser.add_argument("--input_json_folders", type=str, nargs='+', required=True, 
+                       help="input jsonl folders (supports multiple arguments and glob patterns)")
     parser.add_argument("--output_json_folder", type=str, required=True, help="where to save the output ns style jsonl files")
     args = parser.parse_args()
 
-    # data_dir = Path(__file__).absolute().parent
-    # data_dir.mkdir(exist_ok=True)
+    #Find all input_json_folder
+    input_folders = []
+    for pattern in args.input_json_folders:
+        matched_folders = glob.glob(pattern)
+        if not matched_folders:
+            print(f"Warning: No folders found matching pattern: {pattern}")
+        input_folders.extend(matched_folders)
+    if not input_folders:
+        raise ValueError("No folders found matching any of the provided patterns")
+
+    for input_json_folder in input_folders:
+        print(f"Processing {input_json_folder}")
+        original_files = [f for f in glob.glob(f"{input_json_folder}/**", recursive=True) if os.path.isfile(f)]
     
-    original_files = [f for f in glob.glob(f"{args.input_json_folder}/**", recursive=True) if os.path.isfile(f)]
+        if len(original_files) == 0:   
+            raise ValueError("No original files found. please check the --input_json_folders")
+        else:
+            # extract the eval_suite name from the input_json_folder
+            eval_suite = original_files[0].split("/")[-3].split("_original")[0]
+            # create eval suite folder in output_json_folder
+            output_json_suite_folder = Path(f"{args.output_json_folder}/{eval_suite}")
+            output_json_suite_folder.mkdir(parents=True, exist_ok=True)
+            # create eval suite in nemo-skills/dataset/ruler/
+            dataset_folder = Path(f"./{eval_suite}")
+            dataset_folder.mkdir(parents=True, exist_ok=True)
 
-    if len(original_files) > 0:
-        # extract the eval_suite name from the input_json_folder
-        eval_suite = original_files[0].split("/")[-3].split("_original")[0]
-        output_json_suite_folder = Path(f"{args.output_json_folder}/{eval_suite}")
-        output_json_suite_folder.mkdir(parents=True, exist_ok=True)
-    else:
-        raise ValueError("No original files found. please check the --input_json_folder")
+        for original_file in original_files:
+            print(f"Processing {original_file}")
+            process_one_file(original_file, output_json_suite_folder, dataset_folder, eval_suite)
 
-
-    for original_file in original_files:
-        print(original_file)
-        task, subset_file =  original_file.split("/")[-2], original_file.split("/")[-1]
-        # create dataset in nemo-skills/dataset/
-        dataset_folder = Path(f"./{eval_suite}")
-        dataset_folder.mkdir(parents=True, exist_ok=True)
-        # create jsonl task folder in args.output_json_folder
-        output_json_task_folder = Path(f"{output_json_suite_folder}/{task}")
-        output_json_task_folder.mkdir(exist_ok=True)
-        # create jsonl file in output_json_task_folder
-        output_json_file = os.path.join(output_json_task_folder, subset_file)
-        task_folder = Path(f"{dataset_folder}/{task}")  
-        task_folder.mkdir(exist_ok=True)
-
-        updated_config = update_config_for_task(default_config, eval_suite, task, subset_file)
-        # copy the config file
-        copyfile("./__init__.py", os.path.join(task_folder, "__init__.py"))
-        # write the config to the file
-        write_config_to_file(os.path.join(task_folder, "__init__.py"), updated_config)
-
-        with open(original_file, "r") as fin, open(output_json_file, "wt", encoding="utf-8") as fout:
-            for line in fin:
-                original_entry = json.loads(line)
-                new_entry = dict(
-                    index=original_entry["index"],
-                    problem=original_entry["input"],
-                    expected_answer=original_entry["outputs"],
-                    length=original_entry["length"],
-                    assistant_prefix=original_entry['answer_prefix']
-                )
-                
-                fout.write(json.dumps(new_entry) + "\n")
-
-    print(f"Done. Saved eval sutie {eval_suite} jsonl files to {args.output_json_folder}")
-    print(f"""     ==================================\n \
-    You can upload the jsonl files to cluster and skip uploading the dataset folder \n \
-    Or we have pre-generated jsonl files on most cluster. \n\n \
-    Make sure to mount the jsonl folder to /ruler/ in cluster config yaml files!\n \
-    i.e. /lustre/fsw/portfolios/llmservice/projects/llmservice_nemo_long-context/eval/ruler_ns/:/ruler/\n \
-    ==================================
-    """)
-
+        print(f"Done. Saved eval sutie {eval_suite} jsonl files to {args.output_json_folder}")
+        print(f"""     ==================================\n \
+        You can upload the jsonl files to cluster and skip uploading the dataset folder \n \
+        Or we have pre-generated jsonl files on most cluster. \n\n \
+        Make sure to mount the jsonl folder to /ruler/ in cluster config yaml files!\n \
+        i.e. /lustre/fsw/portfolios/llmservice/projects/llmservice_nemo_long-context/eval/ruler_ns/:/ruler/\n \
+        ==================================
+        """)
