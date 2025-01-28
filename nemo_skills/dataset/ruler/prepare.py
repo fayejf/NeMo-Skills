@@ -114,6 +114,7 @@ def process_one_file(original_file, output_json_suite_folder, dataset_folder, ev
             new_entry = dict(
                 index=original_entry["index"],
                 problem=original_entry["input"],
+                # text=original_entry["input"] + original_entry['answer_prefix']+ " " + ", ".join(original_entry["outputs"]) + ".",
                 expected_answer=original_entry["outputs"],
                 length=original_entry["length"],
                 assistant_prefix=original_entry['answer_prefix']
